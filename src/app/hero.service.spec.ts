@@ -1,11 +1,13 @@
 import { TestBed, inject } from '@angular/core/testing';
 
 import { HeroService } from './hero.service';
+import { MessageService } from './message.service';
+// import { HttpClient } from '@angular/common/http';
 
-describe('HeroService', () => {
+fdescribe('HeroService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [HeroService]
+      providers: [HeroService, MessageService]
     });
   });
 
