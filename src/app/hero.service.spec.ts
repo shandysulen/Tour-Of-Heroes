@@ -1,85 +1,161 @@
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+
 import { TestBed, fakeAsync, tick, inject } from '@angular/core/testing';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+
 import { HeroService } from './hero.service';
-import { MockBackend } from '@angular/http/testing';
 import { MessageService } from './message.service';
-import { HttpClient } from '@angular/common/http';
-import {
-  JsonpModule,
-  Jsonp,
-  BaseResponseOptions,
-  ResponseOptions,  
-  Response,
-  BaseRequestOptions,
-  Http
-} from '@angular/http';
+
+import { Hero } from './hero';
 
 fdescribe('service: HeroService', () => {
   let messageService: MessageService;
   let heroService: HeroService;
   let http: HttpClient;
-  let backend: MockBackend;
+  let httpMock: HttpTestingController;
   
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [JsonpModule],
-      providers: [
-        BaseResponseOptions,
-        MessageService, 
-        HeroService,         
-        BaseRequestOptions,
-        // ResponseOptions,
-        MockBackend,
-        // {
-        //   provide: Jsonp,
-        //   useFactory: (backend, options) => new Jsonp(backend, options),
-        //   deps: [MockBackend, BaseRequestOptions]
-        // },
-        // {
-        //   provide: Http,
-        //   useFactory: (backend, options) => new Http(backend, options),
-        //   deps: [MockBackend, BaseRequestOptions]
-        // },
-      ]
+    TestBed.configureTestingModule({  
+      imports: [ HttpClientTestingModule ],    
+      providers: [        
+        MessageService,
+        HttpClient,
+        HeroService
+      ]     
     });
 
-    messageService = new MessageService();
+    http = TestBed.get(HttpClient);
+    httpMock = TestBed.get(HttpTestingController);
+    messageService = TestBed.get(MessageService);
     heroService = new HeroService(http, messageService);
-    backend = TestBed.get(MockBackend);
+  });
+
+  afterEach(() => {
+    httpMock.verify(); //cleans up any outstanding requests if they do exist
   });
 
   it('should be created', () => {
     expect(heroService).toBeTruthy();
   });
   
-  // it('should get all heroes from the database', fakeAsync(() => {
-  //   const heroes = {
-  //     "list": [
-  //       { id: 11, name: 'Mr. Nice' },
-  //       { id: 12, name: 'Narco' },
-  //       { id: 13, name: 'Bombasto' },
-  //       { id: 14, name: 'Celeritas' },
-  //       { id: 15, name: 'Magneta' },
-  //       { id: 16, name: 'RubberMan' },
-  //       { id: 17, name: 'Dynama' },
-  //       { id: 18, name: 'Dr IQ' },
-  //       { id: 19, name: 'Magma' },
-  //       { id: 20, name: 'Tornado' }
-  //     ]
-  //   };
+  it('should get all heroes from the database', () => {
+    const response_heroes = [
+      { id: 11, name: 'Mr. Nice' },
+      { id: 12, name: 'Narco' },
+      { id: 13, name: 'Bombasto' },
+      { id: 14, name: 'Celeritas' },
+      { id: 15, name: 'Magneta' },
+      { id: 16, name: 'RubberMan' },
+      { id: 17, name: 'Dynama' },
+      { id: 18, name: 'Dr IQ' },
+      { id: 19, name: 'Magma' },
+      { id: 20, name: 'Tornado' }
+    ];
+    
+    heroService.getHeroes().subscribe(heroes => {
+      expect(heroes.length).toBe(10);
+      expect(heroes).toEqual(response_heroes);
+    });
 
-  //   backend.connections.subscribe( connection => {
-  //     connection.mockRespond(new Response(<ResponseOptions>(
-  //       {
-  //         "body": JSON.stringify(heroes)
-  //       }
-  //     )))
-  //   });
+    const request = httpMock.expectOne(heroService.heroesUrl);
+    expect(request.request.method).toBe('GET');
 
-  //   let response_heroes = heroService.getHeroes();
-  //   tick();
-  //   expect(response_heroes).toEqual(heroes);
+    request.flush(response_heroes);
 
-  // }));
+  });
+
+  it('should get one hero from the database', () => {
+    const mockResult = {
+      id: 11,
+      name: 'Mr. Nice'
+    }
+
+    const mockId = 11;
+
+    heroService.getHero(mockId).subscribe(hero => {    
+      expect(hero).toEqual(mockResult);
+    });
+
+    const request = httpMock.expectOne(`${heroService.heroesUrl}/${mockId}`);
+    expect(request.request.method).toBe('GET');
+
+    request.flush(mockResult);
+  });
+
+  it('should be able to add a hero', () => {
+    const name : string = "shando";
+
+    const mockHero: Hero = {
+      id: 21,
+      name: "shando"
+    }
+
+    heroService.addHero({ name } as Hero).subscribe(hero => {    
+      expect(hero).toEqual(mockHero);
+    });
+
+    const request = httpMock.expectOne(heroService.heroesUrl);
+    expect(request.request.method).toBe('POST');
+
+    request.flush(mockHero)
+
+  });
+
+  it('should be able to update a hero', () => {
+
+    const mockName: string = "new name";
+
+    const mockHero: Hero = {
+      id: 11,
+      name: "new name"
+    }
+
+    heroService.updateHero(mockHero).subscribe(hero => {
+      expect(hero).toEqual(mockHero);
+    });
+
+    const request = httpMock.expectOne(heroService.heroesUrl);
+    expect(request.request.method).toBe('PUT');
+
+    request.flush(mockHero)
+
+  });
+
+  it('should be able to delete a hero', () => {
+    const id: number = 11;
+
+    const mockHero: Hero = {
+      id: 11,
+      name: "'Mr. Nice'"
+    }
+
+    heroService.deleteHero(mockHero).subscribe(hero => {    
+      expect(hero).toEqual(mockHero);
+    });
+
+    const request = httpMock.expectOne(`${heroService.heroesUrl}/${id}`);
+    expect(request.request.method).toBe('DELETE');
+
+    request.flush(mockHero)
+  });
+
+  it('can test for a 404 error', () => {
+    const emsg = 'deliberate 404 error';
+
+    http.get(heroService.heroesUrl).subscribe(
+      data => fail('should have failed with the 404 error'),
+      (error: HttpErrorResponse) => {
+        expect(error.status).toEqual(404, 'status');
+        expect(error.error).toEqual(emsg, 'message');
+      }
+    );
+
+    const req = httpMock.expectOne(heroService.heroesUrl);
+
+    //Respond with mock error
+    req.flush(emsg, { status: 404, statusText: 'Not Found' });
+
+  });
 
 
 });

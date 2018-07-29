@@ -13,7 +13,7 @@ const httpOptions = {
     providedIn: 'root',
 })
 export class HeroService {
-  private heroesUrl = 'api/heroes';
+  public heroesUrl = 'api/heroes';
   
   constructor(
     private http: HttpClient,
